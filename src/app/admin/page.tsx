@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { runIncidentPrediction, runTargetedAnnouncement } from './actions';
+import { runIncidentPrediction, runTargetedAnnouncement, runEmergencyDispatch } from './actions';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -51,6 +51,7 @@ export default function AdminDashboardPage() {
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
 
   const [isPredicting, setIsPredicting] = useState(false);
+  const [isDispatching, setIsDispatching] = useState(false);
   const [predictions, setPredictions] = useState<PredictedIncident[]>([]);
   const [isPredictionsDialogOpen, setIsPredictionsDialogOpen] = useState(false);
 
@@ -62,6 +63,37 @@ export default function AdminDashboardPage() {
 
   const handleZoneClick = (zone: Zone) => setSelectedZone(zone);
 
+  const triggerAmbulanceCall = async () => {
+    if (!selectedZone) {
+      toast({ title: "No Zone Selected", description: "Please select a zone from the map first.", variant: "destructive" });
+      return;
+    }
+    setIsDispatching(true);
+    try {
+      const result = await runEmergencyDispatch({
+        zoneId: selectedZone.id,
+        incidentType: 'Medical',
+        message: 'Urgent: an ambulance is required in ' + selectedZone.label,
+      });
+
+      const newEvent: Activity = {
+        id: activities.length + 1,
+        title: result.status === 'success' ? 'Ambulance Dispatched' : 'Alert Sent',
+        description: result.responseMessage + ` in ${selectedZone.label}`,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        type: result.status === 'success' ? 'danger' : 'warning',
+        icon: <Ambulance className="h-5 w-5 text-red-500" />,
+      };
+      setActivities([newEvent, ...activities]);
+      toast({ title: "Action Complete", description: result.responseMessage });
+
+    } catch (error) {
+      toast({ title: 'Dispatch Failed', description: 'Could not complete the emergency dispatch.', variant: 'destructive' });
+    } finally {
+      setIsDispatching(false);
+    }
+  };
+  
   const triggerAction = (action: string) => {
     if (!selectedZone) {
       toast({ title: "No Zone Selected", description: "Please select a zone from the map first.", variant: "destructive" });
@@ -72,8 +104,8 @@ export default function AdminDashboardPage() {
       title: action,
       description: `${action} triggered in ${selectedZone.label}`,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      type: action.includes('Ambulance') ? 'danger' : 'success',
-      icon: action === 'Call Ambulance' ? <Ambulance className="h-5 w-5 text-red-500" /> : action === 'Report Missing' ? <Search className="h-5 w-5 text-blue-500" /> : <Megaphone className="h-5 w-5 text-green-500" />,
+      type: action.includes('Ambulance') ? 'danger' : action.includes('Report') ? 'success' : 'warning',
+      icon: action === 'Report Missing' ? <Search className="h-5 w-5 text-blue-500" /> : <Megaphone className="h-5 w-5 text-green-500" />,
     };
     setActivities([newEvent, ...activities]);
     toast({ title: "Action Triggered", description: `${action} in ${selectedZone.label}`});
@@ -216,8 +248,8 @@ export default function AdminDashboardPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-2">
-                <Button onClick={() => triggerAction('Call Ambulance')} disabled={!selectedZone} variant="destructive">
-                  <Ambulance className="mr-2 h-4 w-4" /> Call Ambulance
+                <Button onClick={triggerAmbulanceCall} disabled={!selectedZone || isDispatching} variant="destructive">
+                   {isDispatching ? 'Dispatching...' : <><Ambulance className="mr-2 h-4 w-4" /> Call Ambulance</>}
                 </Button>
                 <Button onClick={() => triggerAction('Report Missing')} disabled={!selectedZone}>
                   <Search className="mr-2 h-4 w-4" /> Report Missing Person
