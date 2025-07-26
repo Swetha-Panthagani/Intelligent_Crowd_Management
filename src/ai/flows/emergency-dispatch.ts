@@ -9,6 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
+import {generate} from 'genkit/ai';
 import {z} from 'genkit';
 
 const EmergencyDispatchInputSchema = z.object({
@@ -28,25 +29,6 @@ export async function emergencyDispatch(input: EmergencyDispatchInput): Promise<
   return emergencyDispatchFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'emergencyDispatchPrompt',
-  input: {schema: EmergencyDispatchInputSchema},
-  output: {schema: z.object({ message: z.string() })},
-  prompt: `You are an emergency dispatcher for a large event. Your task is to process an incoming request and determine the appropriate response.
-
-Request Details:
-- Zone: {{{zoneId}}}
-- Incident Type: {{{incidentType}}}
-- Message: {{{message}}}
-
-Analyze the message. If it contains keywords like "emergency," "urgent," "ambulance," "unconscious," or "not breathing," treat it as a high-priority emergency. In this case, construct a message payload that includes the word 'emergency'.
-
-If the message describes a less critical situation, construct a message payload that includes the word 'info'.
-
-If the message is unclear or lacks information, construct a message payload that asks for more details.
-`,
-});
-
 const emergencyDispatchFlow = ai.defineFlow(
   {
     name: 'emergencyDispatchFlow',
@@ -54,10 +36,31 @@ const emergencyDispatchFlow = ai.defineFlow(
     outputSchema: EmergencyDispatchOutputSchema,
   },
   async input => {
-    // Generate a message payload using the AI prompt
-    const { output } = await prompt(input);
+    // Generate a message payload using the AI
+    const llmResponse = await generate({
+      model: 'googleai/gemini-2.0-flash',
+      prompt: `You are an emergency dispatcher for a large event. Your task is to process an incoming request and determine the appropriate response.
 
-    if (!output) {
+Request Details:
+- Zone: ${input.zoneId}
+- Incident Type: ${input.incidentType}
+- Message: ${input.message}
+
+Analyze the message. If it contains keywords like "emergency," "urgent," "ambulance," "unconscious," or "not breathing," treat it as a high-priority emergency. In this case, construct a message payload that includes the word 'emergency'.
+
+If the message describes a less critical situation, construct a message payload that includes the word 'info'.
+
+If the message is unclear or lacks information, construct a message payload that asks for more details.
+
+Respond with ONLY the message payload string, and nothing else.`,
+      output: {
+        format: 'text',
+      },
+    });
+
+    const dispatchMessage = llmResponse.text;
+
+    if (!dispatchMessage) {
       return {
         status: 'error',
         responseMessage: 'Failed to generate a valid dispatch message.',
@@ -71,7 +74,7 @@ const emergencyDispatchFlow = ai.defineFlow(
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: output.message }),
+        body: JSON.stringify({ message: dispatchMessage }),
       });
 
       if (!response.ok) {
