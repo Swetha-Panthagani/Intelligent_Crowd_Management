@@ -31,7 +31,7 @@ export async function emergencyDispatch(input: EmergencyDispatchInput): Promise<
 const prompt = ai.definePrompt({
   name: 'emergencyDispatchPrompt',
   input: {schema: EmergencyDispatchInputSchema},
-  output: {schema: EmergencyDispatchOutputSchema},
+  output: {schema: z.object({ message: z.string() })},
   prompt: `You are an emergency dispatcher for a large event. Your task is to process an incoming request and determine the appropriate response.
 
 Request Details:
@@ -39,11 +39,11 @@ Request Details:
 - Incident Type: {{{incidentType}}}
 - Message: {{{message}}}
 
-Analyze the message. If it contains keywords like "emergency," "urgent," "ambulance," "unconscious," or "not breathing," treat it as a high-priority emergency. In this case, the response should confirm that emergency services have been notified and an ambulance has been dispatched. Set the status to "success".
+Analyze the message. If it contains keywords like "emergency," "urgent," "ambulance," "unconscious," or "not breathing," treat it as a high-priority emergency. In this case, construct a message payload that includes the word 'emergency'.
 
-If the message describes a less critical situation, the response should state that the information has been received and the relevant personnel have been informed. Set the status to "info".
+If the message describes a less critical situation, construct a message payload that includes the word 'info'.
 
-If the message is unclear or lacks information, ask for more details and set the status to "error".
+If the message is unclear or lacks information, construct a message payload that asks for more details.
 `,
 });
 
@@ -54,10 +54,47 @@ const emergencyDispatchFlow = ai.defineFlow(
     outputSchema: EmergencyDispatchOutputSchema,
   },
   async input => {
-    // In a real-world scenario, you would integrate with a third-party API
-    // here to actually dispatch emergency services.
-    // For this demo, we are using an AI to simulate the response.
-    const {output} = await prompt(input);
-    return output!;
+    // Generate a message payload using the AI prompt
+    const { output } = await prompt(input);
+
+    if (!output) {
+      return {
+        status: 'error',
+        responseMessage: 'Failed to generate a valid dispatch message.',
+      };
+    }
+
+    try {
+      // Call the external ambulance dispatch service
+      const response = await fetch('http://127.0.0.1:3000/call_ambulance', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: output.message }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Dispatch API error:', errorText);
+        return {
+          status: 'error',
+          responseMessage: `Dispatch service returned an error: ${response.statusText}`,
+        };
+      }
+
+      const result = await response.json();
+
+      return {
+        status: result.status || 'info',
+        responseMessage: result.message || 'Dispatch completed.',
+      };
+    } catch (error) {
+      console.error('Failed to call dispatch service:', error);
+      return {
+        status: 'error',
+        responseMessage: 'Could not connect to the emergency dispatch service.',
+      };
+    }
   }
 );
