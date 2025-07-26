@@ -9,7 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {generate} from 'genkit/ai';
+import {generate} from '@genkit-ai/googleai';
 import {z} from 'genkit';
 
 const EmergencyDispatchInputSchema = z.object({
@@ -38,7 +38,7 @@ const emergencyDispatchFlow = ai.defineFlow(
   async input => {
     // Generate a message payload using the AI
     const llmResponse = await generate({
-      model: 'googleai/gemini-2.0-flash',
+      model: ai.model('gemini-2.0-flash'),
       prompt: `You are an emergency dispatcher for a large event. Your task is to process an incoming request and determine the appropriate response.
 
 Request Details:
@@ -53,9 +53,6 @@ If the message describes a less critical situation, construct a message payload 
 If the message is unclear or lacks information, construct a message payload that asks for more details.
 
 Respond with ONLY the message payload string, and nothing else.`,
-      output: {
-        format: 'text',
-      },
     });
 
     const dispatchMessage = llmResponse.text;
