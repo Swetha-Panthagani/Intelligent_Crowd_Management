@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
-import type { Task } from '@/types';
+import type { Announcement } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -15,12 +14,13 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Megaphone, ShieldAlert } from 'lucide-react';
 
-const initialTasks: Task[] = [
-    { id: '1', title: 'Patrol North Quadrant', description: 'Monitor crowd flow and report any issues.', status: 'pending', priority: 'medium', zone: 'north' },
-    { id: '2', title: 'Assist at Info Booth', description: 'Help attendees with questions and directions.', status: 'in-progress', priority: 'low', zone: 'south' },
-    { id: '3', title: 'Respond to Medical Alert', description: 'First-aid required near the main stage.', status: 'completed', priority: 'high', zone: 'east' },
-    { id: '4', title: 'Distribute Water', description: 'Hand out water bottles in the West Quadrant.', status: 'pending', priority: 'medium', zone: 'west' },
+const initialAnnouncements: Announcement[] = [
+    { id: '1', title: 'Morning Briefing', content: 'All volunteers, please gather at the main stage at 8:00 AM for the morning briefing.', timestamp: '1 day ago', priority: 'info' },
+    { id: '2', title: 'Zone Reassignment', content: 'Team B has been reassigned to the North Quadrant to assist with crowd control.', timestamp: '3 hours ago', priority: 'info' },
+    { id: '3', title: 'High-Priority: Lost Child', content: 'A 6-year-old child was last seen near the East Quadrant food stalls. Please be on high alert. Description: red shirt, blue shorts.', timestamp: '15 minutes ago', priority: 'critical' },
 ];
 
 const reportSchema = z.object({
@@ -33,7 +33,6 @@ const reportSchema = z.object({
 type ReportFormValues = z.infer<typeof reportSchema>;
 
 export default function VolunteerPage() {
-    const [tasks, setTasks] = useState<Task[]>(initialTasks);
     const { toast } = useToast();
 
     const form = useForm<ReportFormValues>({
@@ -52,54 +51,33 @@ export default function VolunteerPage() {
         form.reset();
     };
 
-    const getPriorityBadge = (priority: 'low' | 'medium' | 'high') => {
-        if (priority === 'high') return <Badge variant="destructive">High</Badge>;
-        if (priority === 'medium') return <Badge variant="secondary">Medium</Badge>;
-        return <Badge variant="outline">Low</Badge>;
-    }
-    
-    const getStatusBadge = (status: 'pending' | 'in-progress' | 'completed') => {
-        if (status === 'in-progress') return <Badge className="bg-blue-500 text-white">In Progress</Badge>;
-        if (status === 'completed') return <Badge className="bg-green-500 text-white">Completed</Badge>;
-        return <Badge variant="default">Pending</Badge>;
-    }
-
     return (
-        <div className="grid gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-2">
+        <Tabs defaultValue="announcements" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="announcements"><Megaphone className="mr-2 h-4 w-4" />Announcements</TabsTrigger>
+                <TabsTrigger value="report"><ShieldAlert className="mr-2 h-4 w-4" />Report Incident</TabsTrigger>
+            </TabsList>
+            <TabsContent value="announcements">
                 <Card>
                     <CardHeader>
-                        <CardTitle className="font-headline">My Tasks</CardTitle>
-                        <CardDescription>Here are your assigned tasks. Please keep the statuses updated.</CardDescription>
+                        <CardTitle className="font-headline">Announcements</CardTitle>
+                        <CardDescription>Latest updates and information for volunteers.</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Task</TableHead>
-                                    <TableHead>Priority</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead>Zone</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {tasks.map((task) => (
-                                    <TableRow key={task.id}>
-                                        <TableCell>
-                                            <div className="font-medium">{task.title}</div>
-                                            <div className="text-sm text-muted-foreground">{task.description}</div>
-                                        </TableCell>
-                                        <TableCell>{getPriorityBadge(task.priority)}</TableCell>
-                                        <TableCell>{getStatusBadge(task.status)}</TableCell>
-                                        <TableCell className="capitalize">{task.zone}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                    <CardContent className="space-y-4">
+                        {initialAnnouncements.map((ann) => (
+                        <div key={ann.id} className={`p-4 rounded-lg border ${ann.priority === 'critical' ? 'bg-destructive/10 border-destructive' : 'bg-card'}`}>
+                            <div className="flex justify-between items-start">
+                            <h3 className="font-bold">{ann.title}</h3>
+                            {ann.priority === 'critical' && <Badge variant="destructive">Critical</Badge>}
+                            </div>
+                            <p className="text-muted-foreground mt-1">{ann.content}</p>
+                            <p className="text-xs text-muted-foreground/80 mt-2 text-right">{ann.timestamp}</p>
+                        </div>
+                        ))}
                     </CardContent>
                 </Card>
-            </div>
-            <div>
+            </TabsContent>
+            <TabsContent value="report">
                 <Card>
                     <CardHeader>
                         <CardTitle className="font-headline">Report an Incident</CardTitle>
@@ -172,7 +150,7 @@ export default function VolunteerPage() {
                         </Form>
                     </CardContent>
                 </Card>
-            </div>
-        </div>
+            </TabsContent>
+        </Tabs>
     );
 }

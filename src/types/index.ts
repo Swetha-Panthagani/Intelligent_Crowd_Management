@@ -30,15 +30,6 @@ export type Activity = {
   icon: React.ReactNode;
 };
 
-export type Task = {
-  id: string;
-  title: string;
-  description: string;
-  status: 'pending' | 'in-progress' | 'completed';
-  priority: 'low' | 'medium' | 'high';
-  zone: 'north' | 'east' | 'south' | 'west' | 'all';
-};
-
 export type ScheduleItem = {
     time: string;
     artist: string;
