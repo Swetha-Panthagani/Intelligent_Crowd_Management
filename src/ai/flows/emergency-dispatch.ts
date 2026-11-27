@@ -1,6 +1,5 @@
 
 export async function emergencyDispatch() {
-  alert("kk")
   try {
     // Call the external ambulance dispatch service
     const response = await fetch('http://127.0.0.1:5000/call_ambulance', {
@@ -8,7 +7,7 @@ export async function emergencyDispatch() {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ message: "hellof" }),
+      body: JSON.stringify({ message: "Ambulance requested from Admin Dashboard" }),
     });
 
     if (!response.ok) {
