@@ -1,94 +1,95 @@
-# Project Drishti
+<div align="center">
 
-## Overview
+# 🛡️ Intelligent Crowd Management (Eventide Manager)
 
-*Improving safety at large public events.*
+### An AI-assisted command centre for large events: live zone heatmaps, incident prediction, and targeted announcements for admins, volunteers and attendees.
 
-Project Drishti is an AI-powered situational awareness platform that acts as a central nervous system for event safety. This platform provides actionable intelligence to commanders, enabling them to anticipate and mitigate risks in real-time.
+![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=nextdotjs)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![Gemini](https://img.shields.io/badge/Gemini%202.0%20Flash-Genkit-4285F4?logo=googlegemini&logoColor=white)
+![Tailwind](https://img.shields.io/badge/Tailwind%20%2B%20shadcn%2Fui-06B6D4?logo=tailwindcss&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase-App%20Hosting-FFCA28?logo=firebase&logoColor=black)
+
+<img src="docs/screenshots/admin.png" alt="Admin dashboard with zone heatmap, live stats and AI tools" width="100%" />
+
+</div>
+
+---
+
+## The problem
+
+At festivals, stadium events and religious gatherings, a single overcrowded zone can turn dangerous in minutes. Organisers juggle radios, spreadsheets and guesswork. This app gives every role one screen with the information they need and uses Gemini to flag risk before it becomes an incident.
+
+Built for the **Google Agentic AI Day** hackathon (July 2025).
 
 ## Features
 
-- *Centralized Dashboard*: A comprehensive dashboard for event commanders to monitor crowd density, movement, and potential anomalies across different zones.
-- *AI-Powered Video Analysis*: Utilizes the Gemini 1.5 Flash model to analyze video feeds from different event zones, providing real-time summaries of crowd behavior.
-- *Crowd Heatmap*: Visualizes crowd density in different zones, allowing for quick identification of potential chokepoints or overcrowding.
-- *Missing Person Reporting*: A user-facing portal for attendees to upload photos of missing persons.
-- *AI-Powered Image Comparison*: Admins can compare images of missing persons with a database of found individuals, using the Gemini model to identify potential matches.
-- *Separate User and Admin Portals*: A dedicated landing page directs users to either the public-facing reporting page or the secure admin dashboard.
+**Admin dashboard**
+- Live stats: total attendees, zones at risk, active alerts, incidents today
+- Colour-coded **zone heatmap** (green, yellow, red by occupancy); click a zone to act on it
+- One-click actions: call ambulance, report missing person, send zone alert
+- **AI incident prediction**: Gemini reads zone densities plus historical data and returns predicted incidents with type, severity, probability and prevention advice
+- **AI targeted announcements**: pick a zone and a user group, and Gemini drafts the message
+- Incident timeline and project stages
 
-## Architecture
+**Volunteer hub**: announcements feed (with critical alerts highlighted) and an incident report form.
 
-The application is built on a three-tier architecture:
+**Attendee hub**: event schedule, venue map, helpdesk and announcements.
 
-1.  *Client (Web Browser)*: The user interface is built with HTML, CSS, and JavaScript, providing a responsive experience for both admins and users.
-2.  *Backend (Flask Application)*: A Python-based backend built with the Flask framework. It handles all business logic, including user requests, file uploads, and communication with Google Cloud services.
-3.  *Google Cloud Platform (GCP)*: The backend is powered by several GCP services:
-    -   *Vertex AI (Gemini 1.5 Flash)*: Used for all AI-powered analysis, including video summaries and image comparisons.
-    -   *Cloud Storage*: Serves as the central repository for all video files and uploaded images for comparison.
+## Screenshots
 
-## Getting Started
+| Landing | Volunteer hub | Attendee hub |
+|---|---|---|
+| ![Landing page with Admin, Volunteer and Attendee roles](docs/screenshots/home.png) | ![Volunteer announcements](docs/screenshots/volunteer.png) | ![Attendee hub](docs/screenshots/attendee.png) |
 
-Follow these instructions to set up and run the project locally.
+## How the AI works
 
-### Prerequisites
+The AI features are [Genkit](https://firebase.google.com/docs/genkit) flows in `src/ai/flows/`, each with a typed Zod input and output schema so the model always returns structured data the UI can render:
 
--   Python 3.10+
--   A Google Cloud Platform (GCP) account with the Vertex AI API enabled.
--   A Google Cloud Storage bucket.
--   The gcloud CLI, authenticated with your GCP account.
+| Flow | Input | Output |
+|---|---|---|
+| `incident-prediction.ts` | Zone densities (0 to 1) and historical event data | Predicted incidents: zone, type, severity, probability, recommendations |
+| `targeted-announcement-generation.ts` | Zone, user group, situation | A ready-to-send announcement |
+| `emergency-dispatch.ts` | Admin action | Calls an external dispatch service |
 
-### Installation
+The model is configured in `src/ai/genkit.ts` (`googleai/gemini-2.0-flash`).
 
-1.  *Clone the Repository*
-    bash
-    git clone <your-repository-url>
-    cd <your-repository-name>
-    
+## Run it locally
 
-2.  *Set Up Google Cloud Credentials*
-    -   Create a service account in your GCP project with the "Vertex AI User" and "Storage Object Admin" roles.
-    -   Download the JSON key for this service account and save it in the root of the project directory as ace-well-467010-f5-7cf97226dec2.json.
+Requires Node.js 20+ and a Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey).
 
-3.  *Create a Python Virtual Environment*
-    bash
-    python3 -m venv .venv
-    source .venv/bin/activate
-    
+```bash
+npm install
+echo "GEMINI_API_KEY=your-key" > .env.local
+npm run dev            # http://localhost:9002
+npm run genkit:dev     # optional: Genkit developer UI to test the flows
+```
 
-4.  *Install Dependencies*
-    bash
-    pip install -r requirements.txt
-    
+The dashboards use sample data, so they render without a key; the AI buttons need one.
 
-5.  *Create Necessary Directories*
-    bash
-    mkdir -p static/user_uploads
-    mkdir -p static/admin_uploads
-    
+## Project structure
 
-6.  *Run the Application*
-    bash
-    python main.py
-    
-    The application will be available at http://127.0.0.1:8080.
+```
+src/
+├── app/
+│   ├── page.tsx          # Role picker (Admin, Volunteer, Attendee)
+│   ├── admin/            # Command dashboard + server actions
+│   ├── volunteer/        # Announcements and incident reporting
+│   └── attendee/         # Schedule, map, helpdesk
+├── ai/
+│   ├── genkit.ts         # Gemini model config
+│   └── flows/            # Incident prediction, announcements, dispatch
+└── components/           # shadcn/ui components
+chatbot.py                # Experimental Streamlit RAG helpdesk bot (LlamaIndex + Gemini)
+speech_to_speech/         # Experimental speech-to-text / text-to-speech helpers
+```
 
-## Usage
+## Roadmap
 
-1.  *Landing Page*: Open your web browser to http://127.0.0.1:8080. You will be greeted with the Project Drishti landing page.
+- Feed the heatmap from real camera or ticket-scan counts instead of sample data
+- Push notifications to attendees in a zone
+- Connect the helpdesk to the RAG chatbot
 
-2.  *User Flow*:
-    -   Click on *Report Missing Person*.
-    -   Select up to two photos of the missing person and click *Upload*.
+## About me
 
-3.  *Admin Flow*:
-    -   From the landing page, click on *Admin*.
-    -   This will take you to the main dashboard, where you can view video summaries and the crowd heatmap.
-    -   Click on the *Admin Panel* link in the header to navigate to the image comparison page.
-    -   Here, you can upload photos of found individuals and compare them against the user-uploaded photos to find a match.
-
-## Technology Stack
-
--   *Backend*: Python, Flask
--   *Frontend*: HTML, CSS, JavaScript
--   *AI*: Google Cloud Vertex AI (Gemini 1.5 Flash)
--   *Storage*: Google Cloud Storage
--   *Dependency Management*: pip
+Built by **Swetha Panthagani**, GenAI engineer. I build AI dashboards, RAG assistants and LLM automations for businesses. [LinkedIn](https://www.linkedin.com/in/swetha-panthagani/)
